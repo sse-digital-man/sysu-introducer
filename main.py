@@ -56,7 +56,7 @@ if __name__ == '__main__':
     if config_util.ASR_mode == "ali":
         ali_nls.start()
 
-    # 5. 启动数字人后端（与后边使用websocket不同）
+    # 5. 启动控制器后端（使用WebAPI)
     flask_server.start()
 
     # 6. 启动GUI与数字人通信（使用WebSocket）

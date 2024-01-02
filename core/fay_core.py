@@ -408,7 +408,7 @@ class FeiFei:
         pygame.mixer.music.load(file_url)
         pygame.mixer.music.play()
 
-
+    # 发送并播放音频 (与UE5与唇形算法有关)
     def __send_or_play_audio(self, file_url, say_type):
         try:
             try:
@@ -421,12 +421,23 @@ class FeiFei:
             #     audio_length = wav_file.getnframes() / float(wav_file.getframerate())
             #     print(audio_length)
             # if audio_length <= config_util.config["interact"]["maxInteractTime"] or say_type == "script":
-            if config_util.config["interact"]["playSound"]: # 展板播放
+            
+            # 如果我设置了展板播放，则在展播播放；否则调用UE播放
+            if config_util.config["interact"]["playSound"]:
                 self.__play_sound(file_url)
-            else:#发送音频给ue和socket
-                #推送ue
-                content = {'Topic': 'Unreal', 'Data': {'Key': 'audio', 'Value': os.path.abspath(file_url), 'Text': self.a_msg, 'Time': audio_length, 'Type': say_type}}
-                #计算lips
+            else:
+                # 1. 生成UE5推送基本数据
+                content = {
+                    'Topic': 'Unreal', 
+                    'Data': {
+                        'Key': 'audio', 
+                        'Value': os.path.abspath(file_url), 
+                        'Text': self.a_msg, 
+                        'Time': audio_length, 
+                        'Type': say_type
+                    }
+                }
+                # 2. 使用唇形算法计算唇形数据
                 if platform.system() == "Windows":
                     try:
                         lip_sync_generator = LipSyncGenerator()
@@ -435,12 +446,15 @@ class FeiFei:
                         content["Data"]["Lips"] = consolidated_visemes
                     except e:
                         util.log(1, "唇型数字生成失败，无法使用新版ue5工程")
+
+                # 3. 使用WebSocket服务器发送数据
                 wsa_server.get_instance().add_cmd(content)
 
-                #推送远程音频
+                # 4. 推送远程音频（远程设备，非数字人）
                 if self.deviceConnect is not None:
                     try:
-                        self.deviceConnect.send(b'\x00\x01\x02\x03\x04\x05\x06\x07\x08') # 发送音频开始标志，同时也检查设备是否在线
+                        # 发送音频开始标志，同时也检查设备是否在线
+                        self.deviceConnect.send(b'\x00\x01\x02\x03\x04\x05\x06\x07\x08') 
                         wavfile = open(os.path.abspath(file_url),'rb')
                         data = wavfile.read(1024)
                         total = 0
@@ -474,10 +488,11 @@ class FeiFei:
                     util.log(1,"远程音频输入输出设备已经断开：{}".format(serr))
                     self.deviceConnect = None
             time.sleep(1)
-
+    
+    # 接受音频设备输出连接 (deviceSocket, deviceConnect与推送远程音频有关)
     def __accept_audio_device_output_connect(self):
         self.deviceSocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM) 
-        self.deviceSocket.bind(("0.0.0.0",10001))   
+        self.deviceSocket.bind(("0.0.0.0", 10001))   
         self.deviceSocket.listen(1)
         addr = None        
         try:
