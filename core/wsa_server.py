@@ -188,12 +188,12 @@ class TestServer(MyServer):
 
 
 
-#单例
-
+# 数字人/控制台网页的实例
 __instance: MyServer = None
 __web_instance: MyServer = None
 
 
+# 在新建实例后，示例会存储在上述对象中，永久存储
 def new_instance(host='0.0.0.0', port=10000) -> MyServer:
     global __instance
     if __instance is None:
